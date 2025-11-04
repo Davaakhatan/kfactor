@@ -43,3 +43,8 @@ temp/
 frontend/dist/
 frontend/node_modules/
 frontend/.vite/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
