@@ -25,22 +25,28 @@ export const TutorDashboard: React.FC<TutorDashboardProps> = ({ user }) => {
   const [recentSessionId, setRecentSessionId] = useState<string | null>(null);
 
   useEffect(() => {
-    // In production, this would fetch tutor data
-    setTimeout(() => {
-      setTutorData({
-        totalSessions: 45,
-        averageRating: 4.9,
-        totalReferrals: 12,
-        referralConversions: 8,
-        referralCredits: 240,
-        thisWeekSessions: 5,
-        recentRatings: [
-          { student: 'Alex J.', rating: 5, date: '2 days ago' },
-          { student: 'Sarah C.', rating: 5, date: '3 days ago' },
-        ],
-      });
-      setLoading(false);
-    }, 500);
+    const loadTutorData = async () => {
+      try {
+        const data = await apiClient.getTutorStats();
+        setTutorData(data);
+      } catch (error) {
+        console.error('Error loading tutor stats:', error);
+        // Fallback to minimal data on error
+        setTutorData({
+          totalSessions: 0,
+          averageRating: 0,
+          totalReferrals: 0,
+          referralConversions: 0,
+          referralCredits: 0,
+          thisWeekSessions: 0,
+          recentRatings: [],
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTutorData();
   }, []);
 
   const handleTutorSpotlight = async () => {

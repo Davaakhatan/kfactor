@@ -170,6 +170,21 @@ class ApiClient {
     if (ref) params.append('ref', ref);
     return this.request(`/smart-links/${shortCode}${params.toString() ? '?' + params.toString() : ''}`);
   }
+
+  // Parent Dashboard
+  async getParentProgress() {
+    return this.request('/parent/progress');
+  }
+
+  // Tutor Dashboard
+  async getTutorStats() {
+    return this.request('/tutor/stats');
+  }
+
+  // Analytics
+  async getCohortAnalysis(cohort = '2025-01', days = 30) {
+    return this.request(`/analytics/cohorts?cohort=${cohort}&days=${days}`);
+  }
 }
 
 export const apiClient = new ApiClient();

@@ -23,22 +23,27 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({ user }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // In production, this would fetch child's progress
-    // For now, we'll use mock data
-    setTimeout(() => {
-      setProgressData({
-        childName: 'Alex',
-        weeklySessions: 5,
-        improvement: 15,
-        currentStreak: 7,
-        achievements: ['Practice Master', 'Week Warrior'],
-        subjectProgress: [
-          { subject: 'Algebra', score: 92, trend: 'up' },
-          { subject: 'Geometry', score: 85, trend: 'up' },
-        ],
-      });
-      setLoading(false);
-    }, 500);
+    const loadProgress = async () => {
+      try {
+        const data = await apiClient.getParentProgress();
+        setProgressData(data);
+      } catch (error) {
+        console.error('Error loading parent progress:', error);
+        // Fallback to minimal data on error
+        setProgressData({
+          childName: 'Student',
+          weeklySessions: 0,
+          improvement: 0,
+          currentStreak: 0,
+          achievements: [],
+          subjectProgress: [],
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProgress();
   }, []);
 
   const handleShareProgress = async () => {

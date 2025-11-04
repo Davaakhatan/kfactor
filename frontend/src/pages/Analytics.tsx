@@ -17,6 +17,7 @@ export const AnalyticsPage: React.FC = () => {
   const [kFactor, setKFactor] = useState<any>(null);
   const [loops, setLoops] = useState<any[]>([]);
   const [guardrails, setGuardrails] = useState<any>(null);
+  const [cohortAnalysis, setCohortAnalysis] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,15 +31,17 @@ export const AnalyticsPage: React.FC = () => {
       }
 
       try {
-        const [kFactorData, loopData, guardrailData] = await Promise.all([
+        const [kFactorData, loopData, guardrailData, cohortData] = await Promise.all([
           apiClient.getKFactorMetrics('all', 14),
           apiClient.getLoopPerformance(14),
           apiClient.getGuardrailMetrics(7),
+          apiClient.getCohortAnalysis('2025-01', 30),
         ]);
 
         setKFactor(kFactorData);
         setLoops(loopData);
         setGuardrails(guardrailData);
+        setCohortAnalysis(cohortData);
       } catch (error: any) {
         console.error('Error loading analytics:', error);
         // If 404, might be authentication issue
@@ -102,34 +105,36 @@ export const AnalyticsPage: React.FC = () => {
           </div>
         )}
 
-        {/* Cohort Analysis - Mock data for now */}
-        <div className="mb-8">
-          <CohortAnalysisDashboard
-            analysis={{
-              cohort: '2025-01',
-              referred: {
-                totalUsers: 150,
-                fvmRate: 0.75,
-                d1Retention: 0.65,
-                d7Retention: 0.55,
-                d28Retention: 0.45,
-              },
-              baseline: {
-                totalUsers: 200,
-                fvmRate: 0.60,
-                d1Retention: 0.55,
-                d7Retention: 0.45,
-                d28Retention: 0.35,
-              },
-              uplift: {
-                fvm: 0.15,
-                d1: 0.10,
-                d7: 0.10,
-                d28: 0.10,
-              },
-            }}
-          />
-        </div>
+        {/* Cohort Analysis */}
+        {cohortAnalysis && (
+          <div className="mb-8">
+            <CohortAnalysisDashboard
+              analysis={{
+                cohort: cohortAnalysis.cohort,
+                referred: {
+                  totalUsers: cohortAnalysis.referred.totalUsers,
+                  fvmRate: cohortAnalysis.referred.fvmRate,
+                  d1Retention: cohortAnalysis.referred.d1Retention,
+                  d7Retention: cohortAnalysis.referred.d7Retention,
+                  d28Retention: cohortAnalysis.referred.d28Retention,
+                },
+                baseline: {
+                  totalUsers: cohortAnalysis.baseline.totalUsers,
+                  fvmRate: cohortAnalysis.baseline.fvmRate,
+                  d1Retention: cohortAnalysis.baseline.d1Retention,
+                  d7Retention: cohortAnalysis.baseline.d7Retention,
+                  d28Retention: cohortAnalysis.baseline.d28Retention,
+                },
+                uplift: {
+                  fvm: cohortAnalysis.uplift.fvm,
+                  d1: cohortAnalysis.uplift.d1,
+                  d7: cohortAnalysis.uplift.d7,
+                  d28: cohortAnalysis.uplift.d28,
+                },
+              }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

@@ -709,6 +709,264 @@ app.get('/api/smart-links/:shortCode', async (req, res) => {
 // ==================== COHORT ENDPOINTS ====================
 
 // Get cohort rooms
+// Get parent dashboard data (child progress)
+app.get('/api/parent/progress', authenticateToken, (req, res) => {
+  const user = (req as any).user;
+  
+  if (user.persona !== 'parent') {
+    return res.status(403).json({ error: 'Access denied. Parent persona required.' });
+  }
+
+  // Get child's user ID from metadata or separate children table
+  // For now, we'll use the first child linked to this parent
+  // In production, this would be a proper parent-child relationship
+  const childUsers = db
+    .prepare(`
+      SELECT id, name, age, grade, subject_preferences
+      FROM users
+      WHERE persona = 'student'
+      ORDER BY created_at DESC
+      LIMIT 1
+    `)
+    .all() as any[];
+
+  if (childUsers.length === 0) {
+    return res.json({
+      childName: 'Student',
+      weeklySessions: 0,
+      improvement: 0,
+      currentStreak: 0,
+      achievements: [],
+      subjectProgress: [],
+    });
+  }
+
+  const childId = childUsers[0].id;
+  const childName = childUsers[0].name || 'Student';
+
+  // Calculate weekly sessions
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  const weeklySessions = db
+    .prepare(`
+      SELECT COUNT(*) as count
+      FROM events
+      WHERE user_id = ? 
+      AND event_type IN ('session_started', 'practice_completed')
+      AND timestamp >= ?
+    `)
+    .get(childId, weekAgo.toISOString()) as any;
+
+  // Get current streak (from events)
+  const streakEvents = db
+    .prepare(`
+      SELECT COUNT(DISTINCT DATE(timestamp)) as days
+      FROM events
+      WHERE user_id = ?
+      AND event_type = 'practice_completed'
+      AND timestamp >= datetime('now', '-30 days')
+      ORDER BY timestamp DESC
+    `)
+    .get(childId) as any;
+
+  // Get test results for improvement calculation
+  const recentResults = db
+    .prepare(`
+      SELECT subject, score, completed_at
+      FROM test_results
+      WHERE user_id = ?
+      ORDER BY completed_at DESC
+      LIMIT 10
+    `)
+    .all(childId) as any[];
+
+  // Calculate improvement (compare last 2 results)
+  let improvement = 0;
+  if (recentResults.length >= 2) {
+    const latest = recentResults[0].score;
+    const previous = recentResults[1].score;
+    improvement = latest - previous;
+  }
+
+  // Get subject progress
+  const subjectProgress = db
+    .prepare(`
+      SELECT 
+        subject,
+        AVG(score) as avg_score,
+        MAX(score) as max_score,
+        MIN(score) as min_score
+      FROM test_results
+      WHERE user_id = ?
+      GROUP BY subject
+      ORDER BY avg_score DESC
+    `)
+    .all(childId) as any[];
+
+  // Get achievements (from activity feed)
+  const achievements = db
+    .prepare(`
+      SELECT DISTINCT title
+      FROM activity_feed
+      WHERE user_id = ?
+      AND activity_type = 'achievement'
+      ORDER BY created_at DESC
+      LIMIT 5
+    `)
+    .all(childId) as any[];
+
+  res.json({
+    childName,
+    weeklySessions: weeklySessions?.count || 0,
+    improvement: Math.max(0, improvement),
+    currentStreak: streakEvents?.days || 0,
+    achievements: achievements.map((a: any) => a.title),
+    subjectProgress: subjectProgress.map((s: any) => ({
+      subject: s.subject,
+      score: Math.round(s.avg_score),
+      trend: 'up', // Could calculate from recent trends
+    })),
+  });
+});
+
+// Get tutor dashboard data
+app.get('/api/tutor/stats', authenticateToken, (req, res) => {
+  const user = (req as any).user;
+  
+  if (user.persona !== 'tutor') {
+    return res.status(403).json({ error: 'Access denied. Tutor persona required.' });
+  }
+
+  // Get total sessions (from events)
+  const totalSessions = db
+    .prepare(`
+      SELECT COUNT(*) as count
+      FROM events
+      WHERE user_id = ?
+      AND event_type = 'session_completed'
+    `)
+    .get(user.userId) as any;
+
+  // Get this week's sessions
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  const thisWeekSessions = db
+    .prepare(`
+      SELECT COUNT(*) as count
+      FROM events
+      WHERE user_id = ?
+      AND event_type = 'session_completed'
+      AND timestamp >= ?
+    `)
+    .get(user.userId, weekAgo.toISOString()) as any;
+
+  // Get referrals (from loop executions where tutor is referrer)
+  const referrals = db
+    .prepare(`
+      SELECT COUNT(DISTINCT invitee_id) as total,
+             SUM(CASE WHEN fvm_reached = 1 THEN 1 ELSE 0 END) as conversions
+      FROM loop_executions
+      WHERE trigger_user_id = ?
+      AND loop_id = 'tutor_spotlight'
+    `)
+    .get(user.userId) as any;
+
+  // Calculate referral credits (from rewards)
+  const referralCredits = db
+    .prepare(`
+      SELECT SUM(amount) as total
+      FROM rewards
+      WHERE user_id = ?
+      AND reward_type = 'referral_credit'
+    `)
+    .get(user.userId) as any;
+
+  // Get average rating (from metadata or events)
+  // For now, we'll use a default or calculate from events
+  const averageRating = 4.9; // Would come from ratings table in production
+
+  // Get recent ratings (mock structure for now)
+  const recentRatings: any[] = []; // Would query ratings table
+
+  res.json({
+    totalSessions: totalSessions?.count || 0,
+    averageRating,
+    totalReferrals: referrals?.total || 0,
+    referralConversions: referrals?.conversions || 0,
+    referralCredits: referralCredits?.total || 0,
+    thisWeekSessions: thisWeekSessions?.count || 0,
+    recentRatings,
+  });
+});
+
+// Get cohort analysis data
+app.get('/api/analytics/cohorts', authenticateToken, (req, res) => {
+  const { cohort = '2025-01', days = 30 } = req.query;
+  
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - Number(days));
+  
+  // Get referred users (from events where referrer_id is set)
+  const referred = db
+    .prepare(`
+      SELECT 
+        COUNT(DISTINCT user_id) as total_users,
+        SUM(CASE WHEN event_type = 'fvm_reached' THEN 1 ELSE 0 END) as fvm_count
+      FROM events
+      WHERE referrer_id IS NOT NULL
+      AND timestamp >= ?
+    `)
+    .get(startDate.toISOString()) as any;
+
+  // Get baseline users (no referrer)
+  const baseline = db
+    .prepare(`
+      SELECT 
+        COUNT(DISTINCT user_id) as total_users,
+        SUM(CASE WHEN event_type = 'fvm_reached' THEN 1 ELSE 0 END) as fvm_count
+      FROM events
+      WHERE referrer_id IS NULL
+      AND timestamp >= ?
+    `)
+    .get(startDate.toISOString()) as any;
+
+  // Calculate retention (D1, D7, D28)
+  // This would need more complex queries in production
+  const referredD1 = 0.65; // Placeholder - would calculate from actual retention data
+  const referredD7 = 0.55;
+  const referredD28 = 0.45;
+  const baselineD1 = 0.55;
+  const baselineD7 = 0.45;
+  const baselineD28 = 0.35;
+
+  const fvmRate = referred.total_users > 0 ? referred.fvm_count / referred.total_users : 0;
+  const baselineFvmRate = baseline.total_users > 0 ? baseline.fvm_count / baseline.total_users : 0;
+
+  res.json({
+    cohort,
+    referred: {
+      totalUsers: referred.total_users || 0,
+      fvmRate,
+      d1Retention: referredD1,
+      d7Retention: referredD7,
+      d28Retention: referredD28,
+    },
+    baseline: {
+      totalUsers: baseline.total_users || 0,
+      fvmRate: baselineFvmRate,
+      d1Retention: baselineD1,
+      d7Retention: baselineD7,
+      d28Retention: baselineD28,
+    },
+    uplift: {
+      fvm: fvmRate - baselineFvmRate,
+      d1: referredD1 - baselineD1,
+      d7: referredD7 - baselineD7,
+      d28: referredD28 - baselineD28,
+    },
+  });
+});
+
 app.get('/api/cohorts', authenticateToken, (req, res) => {
   const user = (req as any).user;
   
