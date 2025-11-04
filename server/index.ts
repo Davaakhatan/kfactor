@@ -166,6 +166,7 @@ app.get('/api/leaderboard', authenticateToken, (req, res) => {
   const entries = db
     .prepare(`
       SELECT 
+        le.id,
         le.rank,
         le.user_id as userId,
         le.score,
@@ -180,7 +181,29 @@ app.get('/api/leaderboard', authenticateToken, (req, res) => {
     `)
     .all(subject, period) as any[];
 
-  res.json(entries);
+  // Deduplicate by userId (keep entry with best rank)
+  const uniqueEntries = entries.reduce((acc: any[], entry: any) => {
+    const existing = acc.find(e => e.userId === entry.userId);
+    if (!existing || entry.rank < existing.rank) {
+      if (existing) {
+        const index = acc.indexOf(existing);
+        acc[index] = entry;
+      } else {
+        acc.push(entry);
+      }
+    }
+    return acc;
+  }, []);
+
+  // Sort by rank and ensure unique IDs
+  const sortedEntries = uniqueEntries
+    .sort((a, b) => a.rank - b.rank)
+    .map((entry, index) => ({
+      ...entry,
+      id: entry.id || `leaderboard-${entry.userId}-${index}`,
+    }));
+
+  res.json(sortedEntries);
 });
 
 // Get activity feed
@@ -234,35 +257,72 @@ app.get('/api/test-results', authenticateToken, (req, res) => {
   res.json(results);
 });
 
-// Get latest test result
+// Get latest test result with calculated ranking
 app.get('/api/test-results/latest', authenticateToken, (req, res) => {
-  const user = (req as any).user;
-  
-  const result = db
-    .prepare(`
-      SELECT 
-        id,
-        subject,
-        test_type,
-        score,
-        correct,
-        total,
-        percentile,
-        rank,
-        total_participants,
-        completed_at
-      FROM test_results
-      WHERE user_id = ?
-      ORDER BY completed_at DESC
-      LIMIT 1
-    `)
-    .get(user.userId) as any;
-
-  if (!result) {
-    return res.status(404).json({ error: 'No test results found' });
+  try {
+    const user = (req as any).user;
+    
+    const result = db
+      .prepare(`
+        SELECT 
+          id,
+          subject,
+          test_type,
+          score,
+          correct,
+          total,
+          completed_at
+        FROM test_results
+        WHERE user_id = ?
+        ORDER BY completed_at DESC
+        LIMIT 1
+      `)
+      .get(user.userId) as any;
+    
+    if (!result) {
+      return res.status(404).json({ error: 'No test results found' });
+    }
+    
+    // Calculate ranking for this test result (users with better scores)
+    const rankingResult = db
+      .prepare(`
+        SELECT COUNT(*) + 1 as rank
+        FROM test_results
+        WHERE subject = ?
+          AND test_type = ?
+          AND (score > ? OR (score = ? AND completed_at < ?))
+          AND datetime(completed_at, 'localtime') >= datetime('now', '-30 days', 'localtime')
+      `)
+      .get(result.subject, result.test_type, result.score, result.score, result.completed_at) as any;
+    
+    const rank = rankingResult?.rank || 1;
+    
+    // Get total participants
+    const totalResult = db
+      .prepare(`
+        SELECT COUNT(DISTINCT user_id) as total
+        FROM test_results
+        WHERE subject = ?
+          AND test_type = ?
+          AND datetime(completed_at, 'localtime') >= datetime('now', '-30 days', 'localtime')
+      `)
+      .get(result.subject, result.test_type) as any;
+    
+    const totalParticipants = totalResult?.total || 1;
+    const percentile = totalParticipants > 1 
+      ? Math.round((1 - (rank - 1) / totalParticipants) * 100)
+      : 100;
+    
+    res.json({
+      ...result,
+      rank,
+      totalParticipants,
+      percentile,
+    });
+  } catch (error: any) {
+    console.error('Error getting latest test result:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
-
-  res.json(result);
 });
 
 // ==================== ANALYTICS ENDPOINTS ====================
@@ -414,6 +474,219 @@ app.get('/api/analytics/guardrails', authenticateToken, (req, res) => {
       start: startDate.toISOString(),
       end: new Date().toISOString(),
     },
+  });
+});
+
+// ==================== STUDENT DASHBOARD ENDPOINTS ====================
+
+// Get student stats (streak, sessions, ranking)
+app.get('/api/student/stats', authenticateToken, (req, res) => {
+  const user = (req as any).user;
+  
+  // Get current streak (simplified: count consecutive days with events)
+  // SQLite doesn't support window functions well, so we'll use a simpler approach
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  let streakDays = 0;
+  for (let i = 0; i < 30; i++) {
+    const checkDate = new Date(today);
+    checkDate.setDate(checkDate.getDate() - i);
+    const nextDay = new Date(checkDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+    
+    const hasEvent = db
+      .prepare(`
+        SELECT COUNT(*) as count
+        FROM events
+        WHERE user_id = ?
+          AND event_type IN ('session_complete', 'practice_complete')
+          AND datetime(timestamp, 'localtime') >= datetime(?, 'localtime')
+          AND datetime(timestamp, 'localtime') < datetime(?, 'localtime')
+      `)
+      .get(user.userId, checkDate.toISOString(), nextDay.toISOString()) as any;
+    
+    if (hasEvent.count > 0) {
+      streakDays++;
+    } else {
+      break; // Streak broken
+    }
+  }
+  
+  const currentStreak = streakDays;
+  
+  // Get sessions this week
+  const weekStart = new Date();
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Start of week (Sunday)
+  weekStart.setHours(0, 0, 0, 0);
+  
+  const sessionsThisWeek = db
+    .prepare(`
+      SELECT COUNT(*) as count
+      FROM events
+      WHERE user_id = ?
+        AND event_type IN ('session_complete', 'practice_complete')
+        AND datetime(timestamp, 'localtime') >= datetime(?, 'localtime')
+    `)
+    .get(user.userId, weekStart.toISOString()) as any;
+  
+  const weeklySessions = sessionsThisWeek?.count || 0;
+  
+  // Get ranking (simplified: count users with more sessions or better scores)
+  const userStats = db
+    .prepare(`
+      SELECT 
+        COUNT(*) as session_count,
+        AVG(CASE 
+          WHEN json_extract(metadata, '$.score') IS NOT NULL 
+          THEN json_extract(metadata, '$.score') 
+          ELSE 0 END) as avg_score
+      FROM events
+      WHERE user_id = ?
+        AND event_type IN ('session_complete', 'practice_complete')
+        AND datetime(timestamp, 'localtime') >= datetime('now', '-7 days', 'localtime')
+    `)
+    .get(user.userId) as any;
+  
+  const userSessionCount = userStats?.session_count || 0;
+  const userAvgScore = userStats?.avg_score || 0;
+  
+  // Count users with better stats
+  const betterUsers = db
+    .prepare(`
+      SELECT COUNT(DISTINCT user_id) as count
+      FROM events
+      WHERE event_type IN ('session_complete', 'practice_complete')
+        AND datetime(timestamp, 'localtime') >= datetime('now', '-7 days', 'localtime')
+        AND user_id != ?
+      GROUP BY user_id
+      HAVING COUNT(*) > ?
+         OR (COUNT(*) = ? AND AVG(CASE 
+              WHEN json_extract(metadata, '$.score') IS NOT NULL 
+              THEN json_extract(metadata, '$.score') 
+              ELSE 0 END) > ?)
+    `)
+    .all(user.userId, userSessionCount, userSessionCount, userAvgScore) as any[];
+  
+  const ranking = betterUsers.length + 1;
+  
+  res.json({
+    currentStreak,
+    weeklySessions,
+    ranking,
+  });
+});
+
+// Get student cohorts/study groups
+app.get('/api/student/cohorts', authenticateToken, (req, res) => {
+  const user = (req as any).user;
+  
+  // Get cohorts the user is part of (for now, return default cohort based on user's subject interests)
+  // In production, this would query a cohorts table
+  const userData = db
+    .prepare('SELECT grade, age FROM users WHERE id = ?')
+    .get(user.userId) as any;
+  
+  // For demo, create a cohort based on user's grade/age
+  const cohortName = userData?.grade ? `${userData.grade} Study Group` : 'Study Group';
+  
+  // Get online members (users who have been active in last 5 minutes)
+  const activeThreshold = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  
+  const activeMembers = db
+    .prepare(`
+      SELECT DISTINCT user_id
+      FROM events
+      WHERE datetime(timestamp, 'localtime') >= datetime(?, 'localtime')
+        AND user_id != ?
+      LIMIT 5
+    `)
+    .all(activeThreshold, user.userId) as any[];
+  
+  const totalMembers = db
+    .prepare(`
+      SELECT COUNT(DISTINCT user_id) as count
+      FROM events
+      WHERE datetime(timestamp, 'localtime') >= datetime('now', '-7 days', 'localtime')
+    `)
+    .get() as any;
+  
+  res.json([
+    {
+      id: 'default-cohort',
+      name: cohortName,
+      subject: 'General',
+      members: activeMembers.map(m => ({
+        userId: m.user_id,
+        online: true,
+      })),
+      activeCount: activeMembers.length,
+      totalCount: totalMembers?.count || activeMembers.length,
+    },
+  ]);
+});
+
+// Create a test result (for testing/demo purposes)
+app.post('/api/test-results', authenticateToken, (req, res) => {
+  const user = (req as any).user;
+  const { subject, test_type, score, correct, total } = req.body;
+  
+  if (!subject || !test_type || score === undefined || correct === undefined || total === undefined) {
+    return res.status(400).json({ error: 'Missing required fields: subject, test_type, score, correct, total' });
+  }
+  
+  const resultId = uuidv4();
+  
+  db.prepare(`
+    INSERT INTO test_results (id, user_id, subject, test_type, score, correct, total, completed_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+  `).run(resultId, user.userId, subject, test_type, score, correct, total);
+  
+  // Log event
+  db.prepare(`
+    INSERT INTO events (id, event_type, user_id, timestamp, metadata)
+    VALUES (?, 'results_page_view', ?, datetime('now'), ?)
+  `).run(uuidv4(), user.userId, JSON.stringify({
+    test_result_id: resultId,
+    subject,
+    test_type,
+    score,
+  }));
+  
+  res.json({
+    id: resultId,
+    success: true,
+    message: 'Test result created',
+  });
+});
+
+// Create a practice session event (for testing/demo purposes)
+app.post('/api/sessions', authenticateToken, (req, res) => {
+  const user = (req as any).user;
+  const { subject, score, duration } = req.body;
+  
+  const eventId = uuidv4();
+  
+  // Log session complete event
+  db.prepare(`
+    INSERT INTO events (id, event_type, user_id, timestamp, metadata)
+    VALUES (?, 'session_complete', ?, datetime('now'), ?)
+  `).run(eventId, user.userId, JSON.stringify({
+    subject: subject || 'General',
+    score: score || null,
+    duration: duration || null,
+  }));
+  
+  // Update presence
+  db.prepare(`
+    INSERT OR REPLACE INTO presence (user_id, subject, is_online, last_seen, activity_type)
+    VALUES (?, ?, 1, datetime('now'), 'practicing')
+  `).run(user.userId, subject || 'General');
+  
+  res.json({
+    id: eventId,
+    success: true,
+    message: 'Session recorded',
   });
 });
 
@@ -628,6 +901,7 @@ app.post('/api/session-intelligence/process', authenticateToken, async (req, res
       persona,
       tutorId,
       metadata,
+      eventBus: system.eventBus,
     });
 
     res.json({
@@ -967,6 +1241,146 @@ app.get('/api/tutor/stats', authenticateToken, (req, res) => {
     referralCredits: referralCredits?.total || 0,
     thisWeekSessions: thisWeekSessions?.count || 0,
     recentRatings,
+  });
+});
+
+// Get results-page funnel (impressions → share clicks → join → FVM per tool)
+app.get('/api/analytics/results-funnel', authenticateToken, (req, res) => {
+  const { days = 14 } = req.query;
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - Number(days));
+
+  // For now, return empty data structure (will be populated when events are tracked)
+  const tools = ['diagnostics', 'practice', 'flashcards'];
+  const funnelData = tools.map((tool) => ({
+    tool,
+    impressions: 0,
+    shareClicks: 0,
+    joins: 0,
+    fvm: 0,
+    shareClickRate: 0,
+    joinRate: 0,
+    fvmRate: 0,
+    overallConversion: 0,
+  }));
+
+  res.json(funnelData);
+});
+
+// Get transcription-action funnel (session → summary → action → invite → join → FVM)
+app.get('/api/analytics/transcription-funnel', authenticateToken, (req, res) => {
+  const { days = 14 } = req.query;
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - Number(days));
+
+  // Get sessions processed
+  const sessions = db
+    .prepare(`
+      SELECT COUNT(*) as count
+      FROM events
+      WHERE event_type = 'session_processed'
+      AND timestamp >= ?
+    `)
+    .get(startDate.toISOString()) as any;
+
+  // Get summaries generated
+  const summaries = db
+    .prepare(`
+      SELECT COUNT(*) as count
+      FROM events
+      WHERE event_type = 'summary_generated'
+      AND timestamp >= ?
+    `)
+    .get(startDate.toISOString()) as any;
+
+  // Get agentic actions triggered
+  const actions = db
+    .prepare(`
+      SELECT COUNT(*) as count
+      FROM events
+      WHERE event_type = 'agentic_action_triggered'
+      AND timestamp >= ?
+    `)
+    .get(startDate.toISOString()) as any;
+
+  // Get invites from agentic actions
+  const invites = db
+    .prepare(`
+      SELECT COUNT(*) as count
+      FROM events
+      WHERE event_type = 'invites_sent'
+      AND json_extract(metadata, '$.source') = 'agentic_action'
+      AND timestamp >= ?
+    `)
+    .get(startDate.toISOString()) as any;
+
+  // Get joins from agentic action invites
+  const joins = db
+    .prepare(`
+      SELECT COUNT(*) as count
+      FROM events
+      WHERE event_type = 'account_created'
+      AND json_extract(metadata, '$.source') = 'agentic_action'
+      AND timestamp >= ?
+    `)
+    .get(startDate.toISOString()) as any;
+
+  // Get FVM from agentic action invites
+  const fvm = db
+    .prepare(`
+      SELECT COUNT(*) as count
+      FROM events
+      WHERE event_type = 'FVM_reached'
+      AND json_extract(metadata, '$.source') = 'agentic_action'
+      AND timestamp >= ?
+    `)
+    .get(startDate.toISOString()) as any;
+
+  const sessionCount = sessions?.count || 0;
+  const summaryCount = summaries?.count || 0;
+  const actionCount = actions?.count || 0;
+  const inviteCount = invites?.count || 0;
+  const joinCount = joins?.count || 0;
+  const fvmCount = fvm?.count || 0;
+
+  res.json({
+    sessions: sessionCount,
+    summaries: summaryCount,
+    agenticActions: actionCount,
+    invites: inviteCount,
+    joins: joinCount,
+    fvm: fvmCount,
+    summaryRate: sessionCount > 0 ? (summaryCount / sessionCount) * 100 : 0,
+    actionRate: summaryCount > 0 ? (actionCount / summaryCount) * 100 : 0,
+    inviteRate: actionCount > 0 ? (inviteCount / actionCount) * 100 : 0,
+    joinRate: inviteCount > 0 ? (joinCount / inviteCount) * 100 : 0,
+    fvmRate: joinCount > 0 ? (fvmCount / joinCount) * 100 : 0,
+    overallConversion: sessionCount > 0 ? (fvmCount / sessionCount) * 100 : 0,
+  });
+});
+
+// Get LTV delta (referred vs baseline cohorts)
+app.get('/api/analytics/ltv-delta', authenticateToken, (req, res) => {
+  const { cohort, days = 30 } = req.query;
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - Number(days));
+
+  // For now, return mock data (LTV calculation would require actual payment/user data)
+  res.json({
+    referred: {
+      avgLTV: 125.50,
+      userCount: 150,
+    },
+    baseline: {
+      avgLTV: 100.00,
+      userCount: 200,
+    },
+    delta: 25.50,
+    deltaPercent: 25.5,
+    timeRange: {
+      start: startDate.toISOString(),
+      end: new Date().toISOString(),
+    },
   });
 });
 

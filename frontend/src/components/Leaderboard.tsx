@@ -9,6 +9,7 @@ import React from 'react';
 import { Trophy, Award, Medal } from 'lucide-react';
 
 interface LeaderboardEntry {
+  id?: string;
   rank: number;
   userId: string;
   score: number;
@@ -56,7 +57,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
       <div className="divide-y divide-gray-100">
         {displayEntries.map((entry) => (
           <div
-            key={entry.userId}
+            key={entry.id || `${entry.userId}-${entry.rank}`}
             className="p-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
           >
             <div className="flex items-center gap-3">

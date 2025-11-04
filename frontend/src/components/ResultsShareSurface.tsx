@@ -76,21 +76,21 @@ export const ResultsShareSurface: React.FC<ResultsShareSurfaceProps> = ({
       <div className="flex gap-2">
         <button
           onClick={() => onShare('challenge')}
-          className="flex-1 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium py-2.5 px-4 rounded-lg border border-gray-200 transition-colors flex items-center justify-center gap-2"
+          className="flex-1 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium py-2.5 px-4 rounded-lg border border-gray-200 transition-all hover:border-primary-300 flex items-center justify-center gap-2"
         >
           <TrendingUp className="h-4 w-4" />
           Challenge Friend
         </button>
         <button
           onClick={() => onShare('invite')}
-          className="flex-1 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium py-2.5 px-4 rounded-lg border border-gray-200 transition-colors flex items-center justify-center gap-2"
+          className="flex-1 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium py-2.5 px-4 rounded-lg border border-gray-200 transition-all hover:border-primary-300 flex items-center justify-center gap-2"
         >
           <Users className="h-4 w-4" />
           Invite Buddy
         </button>
         <button
           onClick={handleCopyLink}
-          className="bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium py-2.5 px-4 rounded-lg border border-gray-200 transition-colors flex items-center justify-center gap-2"
+          className="bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium py-2.5 px-4 rounded-lg border border-gray-200 transition-all hover:border-primary-300 flex items-center justify-center gap-2"
         >
           {linkCopied ? (
             <Check className="h-4 w-4 text-green-500" />

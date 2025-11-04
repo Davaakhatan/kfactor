@@ -23,6 +23,8 @@ export const TutorDashboard: React.FC<TutorDashboardProps> = ({ user }) => {
   const [tutorData, setTutorData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [recentSessionId, setRecentSessionId] = useState<string | null>(null);
+  const [spotlightSuccess, setSpotlightSuccess] = useState(false);
+  const [spotlightError, setSpotlightError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadTutorData = async () => {
@@ -50,7 +52,8 @@ export const TutorDashboard: React.FC<TutorDashboardProps> = ({ user }) => {
   }, []);
 
   const handleTutorSpotlight = async () => {
-    // Trigger Tutor Spotlight loop (requires 5★ rating)
+    setSpotlightError(null);
+    setSpotlightSuccess(false);
     try {
       await apiClient.triggerViralLoop('session_rated', {
         persona: 'tutor',
@@ -60,100 +63,137 @@ export const TutorDashboard: React.FC<TutorDashboardProps> = ({ user }) => {
         tutorName: user?.name || 'Expert Tutor',
         tutorRating: tutorData?.averageRating || 5,
       });
-      alert('Tutor Spotlight card generated! Share with families to get referral credits.');
-    } catch (error) {
-      console.error('Error generating tutor spotlight:', error);
-      alert('Error: ' + (error as any).message || 'Failed to generate tutor spotlight');
+      setSpotlightSuccess(true);
+      setTimeout(() => setSpotlightSuccess(false), 5000);
+    } catch (error: any) {
+      setSpotlightError(error.message || 'Failed to generate tutor spotlight');
+      setTimeout(() => setSpotlightError(null), 5000);
     }
   };
 
   if (loading) {
-    return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>;
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 pb-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Tutor Dashboard
+        <div className="mb-10">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2 sm:mb-3 tracking-tight">
+            Welcome back{user?.name ? `, ${user.name.split(' ')[0]}` : ''}
           </h1>
-          <p className="text-gray-600">Grow your student base and track referrals</p>
+          <p className="text-gray-600 text-base sm:text-lg">Grow your student base and track referrals</p>
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-5 mb-6 sm:mb-8">
+          <div className="stat-card group">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Total Sessions</p>
-                <p className="text-2xl font-bold text-gray-900">{tutorData?.totalSessions}</p>
+                <p className="text-sm font-medium text-gray-500 mb-2 uppercase tracking-wide">Total Sessions</p>
+                <p className="text-3xl font-bold text-gray-900">{tutorData?.totalSessions || 0}</p>
+                <p className="text-xs text-gray-500 mt-1">completed</p>
               </div>
-              <Users className="h-8 w-8 text-primary-500" />
+              <div className="p-3 bg-primary-50 rounded-xl group-hover:bg-primary-100 transition-colors">
+                <Users className="h-6 w-6 text-primary-600" />
+              </div>
             </div>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="stat-card group">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Average Rating</p>
-                <p className="text-2xl font-bold text-gray-900">{tutorData?.averageRating}</p>
+                <p className="text-sm font-medium text-gray-500 mb-2 uppercase tracking-wide">Average Rating</p>
+                <p className="text-3xl font-bold text-gray-900">{tutorData?.averageRating || 0}</p>
+                <p className="text-xs text-gray-500 mt-1">stars</p>
               </div>
-              <Star className="h-8 w-8 text-yellow-500" />
+              <div className="p-3 bg-yellow-50 rounded-xl group-hover:bg-yellow-100 transition-colors">
+                <Star className="h-6 w-6 text-yellow-600" />
+              </div>
             </div>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="stat-card group">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Referrals</p>
-                <p className="text-2xl font-bold text-gray-900">{tutorData?.totalReferrals}</p>
+                <p className="text-sm font-medium text-gray-500 mb-2 uppercase tracking-wide">Referrals</p>
+                <p className="text-3xl font-bold text-gray-900">{tutorData?.totalReferrals || 0}</p>
+                <p className="text-xs text-gray-500 mt-1">total</p>
               </div>
-              <TrendingUp className="h-8 w-8 text-green-500" />
+              <div className="p-3 bg-green-50 rounded-xl group-hover:bg-green-100 transition-colors">
+                <TrendingUp className="h-6 w-6 text-green-600" />
+              </div>
             </div>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="stat-card group">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Referral Credits</p>
-                <p className="text-2xl font-bold text-gray-900">{tutorData?.referralCredits}</p>
+                <p className="text-sm font-medium text-gray-500 mb-2 uppercase tracking-wide">Referral Credits</p>
+                <p className="text-3xl font-bold text-gray-900">{tutorData?.referralCredits || 0}</p>
+                <p className="text-xs text-gray-500 mt-1">earned</p>
               </div>
-              <DollarSign className="h-8 w-8 text-blue-500" />
+              <div className="p-3 bg-blue-50 rounded-xl group-hover:bg-blue-100 transition-colors">
+                <DollarSign className="h-6 w-6 text-blue-600" />
+              </div>
             </div>
           </div>
         </div>
 
         {/* Tutor Spotlight Viral Loop - Main Feature */}
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200 p-8 mb-8">
-          <div className="flex items-start justify-between mb-6">
+        <div className="card p-8 mb-8 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-blue-200/50">
+          <div className="flex items-start justify-between">
             <div className="flex-1">
-              <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-                Share Your Expertise
-              </h2>
-              <p className="text-gray-600 mb-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-blue-600 rounded-lg">
+                  <Share2 className="h-5 w-5 text-white" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Share Your Expertise
+                </h2>
+              </div>
+              <p className="text-gray-600 mb-6 text-lg leading-relaxed max-w-2xl">
                 Generate a tutor card and share it with families. 
-                Earn referral credits when they book their first session!
+                <span className="font-semibold text-gray-900"> Earn referral credits when they book their first session!</span>
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={handleTutorSpotlight}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center gap-2"
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-all shadow-sm hover:shadow-md flex items-center gap-2 text-base active:scale-[0.98]"
                 >
                   <Share2 className="h-5 w-5" />
                   Generate Tutor Card
                 </button>
-                <button className="bg-white hover:bg-gray-50 text-blue-600 font-medium py-3 px-6 rounded-lg border border-blue-200 transition-colors flex items-center gap-2">
+                <button className="btn-secondary flex items-center gap-2 text-base">
                   <Send className="h-5 w-5" />
                   Share Prep Pack
                 </button>
               </div>
+              {spotlightSuccess && (
+                <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+                  <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                  Tutor Spotlight card generated! Check your rewards.
+                </div>
+              )}
+              {spotlightError && (
+                <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+                  <div className="h-2 w-2 bg-red-500 rounded-full"></div>
+                  {spotlightError}
+                </div>
+              )}
             </div>
           </div>
         </div>
 
         {/* Referral Analytics */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Referral Performance</h2>
+          <div className="card p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-6">Referral Performance</h2>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Total Referrals</span>
@@ -180,8 +220,8 @@ export const TutorDashboard: React.FC<TutorDashboardProps> = ({ user }) => {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Ratings</h2>
+          <div className="card p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-6">Recent Ratings</h2>
             <div className="space-y-4">
               {tutorData?.recentRatings?.map((rating: any, index: number) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -206,8 +246,8 @@ export const TutorDashboard: React.FC<TutorDashboardProps> = ({ user }) => {
         </div>
 
         {/* Session Stats */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">This Week</h2>
+        <div className="card p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-6">This Week</h2>
           <div className="grid grid-cols-2 gap-4">
             <div className="p-4 bg-gray-50 rounded-lg">
               <p className="text-sm text-gray-600 mb-1">Sessions Completed</p>

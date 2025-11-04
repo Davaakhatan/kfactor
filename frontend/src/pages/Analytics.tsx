@@ -10,6 +10,9 @@ import { KFactorDashboard } from '../components/dashboards/KFactorDashboard';
 import { LoopPerformanceDashboard } from '../components/dashboards/LoopPerformanceDashboard';
 import { GuardrailDashboard } from '../components/dashboards/GuardrailDashboard';
 import { CohortAnalysisDashboard } from '../components/dashboards/CohortAnalysisDashboard';
+import { ResultsFunnelDashboard } from '../components/dashboards/ResultsFunnelDashboard';
+import { TranscriptionFunnelDashboard } from '../components/dashboards/TranscriptionFunnelDashboard';
+import { LTVDeltaDashboard } from '../components/dashboards/LTVDeltaDashboard';
 import { apiClient } from '../services/api';
 import { BarChart3 } from 'lucide-react';
 
@@ -57,16 +60,31 @@ export const AnalyticsPage: React.FC = () => {
   }, []);
 
   if (loading) {
-    return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading analytics...</div>;
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mb-4"></div>
+          <p className="text-gray-600">Loading analytics...</p>
+        </div>
+      </div>
+    );
   }
 
   // Show error if no data loaded (might be auth issue)
   if (!kFactor && !loops.length && !guardrails) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600 mb-4">Unable to load analytics</p>
-          <p className="text-sm text-gray-500">Please make sure you're logged in and try again</p>
+        <div className="text-center max-w-md">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+            <p className="text-red-800 font-medium mb-2">Unable to load analytics</p>
+            <p className="text-sm text-red-600 mb-4">Please make sure you're logged in and try again</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+            >
+              Retry
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -135,6 +153,21 @@ export const AnalyticsPage: React.FC = () => {
             />
           </div>
         )}
+
+        {/* Funnel Dashboards */}
+        <div className="mt-8">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Funnel Analysis</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ResultsFunnelDashboard days={14} />
+            <TranscriptionFunnelDashboard days={14} />
+          </div>
+        </div>
+
+        {/* LTV Delta */}
+        <div className="mt-8">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">LTV Analysis</h2>
+          <LTVDeltaDashboard days={30} />
+        </div>
       </div>
     </div>
   );

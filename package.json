@@ -10,6 +10,7 @@
     "server": "tsx server/index.ts",
     "db:init": "tsx database/init.ts",
     "db:seed": "tsx database/seed.ts",
+    "db:seed-cohort": "tsx database/seed-cohort.ts",
     "db:reset": "rm -f xfactor.db && npm run db:init && npm run db:seed",
     "test": "vitest run",
     "test:watch": "vitest",

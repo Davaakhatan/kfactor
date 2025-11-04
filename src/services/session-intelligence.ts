@@ -10,6 +10,7 @@ import { SummaryService, SessionSummary } from './summary/summary-service.js';
 import { ActionOrchestrator } from '../core/agentic-actions/action-orchestrator.js';
 import { LoopExecutor } from '../core/loops/loop-executor.js';
 import { Persona } from '../core/types/index.js';
+import { EventBus } from '../core/events/event-bus.js';
 
 export interface ProcessSessionRequest {
   sessionId: string;
@@ -17,6 +18,7 @@ export interface ProcessSessionRequest {
   persona: Persona;
   tutorId?: string;
   audioData?: unknown; // In production: actual audio stream/file
+  eventBus?: EventBus; // Optional event bus for funnel tracking
   metadata?: {
     subject?: string;
     topic?: string;
@@ -71,6 +73,19 @@ export class SessionIntelligenceService {
         }
       );
 
+      // Track session processed event (for funnel tracking)
+      if (request.eventBus) {
+        request.eventBus.publish({
+          eventType: 'session_processed' as any,
+          userId: request.userId,
+          timestamp: new Date().toISOString(),
+          metadata: {
+            sessionId: request.sessionId,
+            persona: request.persona,
+          },
+        });
+      }
+
       // Step 2: Generate summary
       console.log(`[SessionIntelligence] Generating summary for session ${request.sessionId}`);
       const summary = await this.summaryService.generateSummary(transcription, {
@@ -78,6 +93,20 @@ export class SessionIntelligenceService {
         includeRecommendations: true,
         includeNextSteps: true,
       });
+
+      // Track summary generated event (for funnel tracking)
+      if (request.eventBus) {
+        request.eventBus.publish({
+          eventType: 'summary_generated' as any,
+          userId: request.userId,
+          timestamp: new Date().toISOString(),
+          metadata: {
+            sessionId: request.sessionId,
+            persona: request.persona,
+            summaryLength: summary.keyPoints.length,
+          },
+        });
+      }
 
       // Step 3: Trigger agentic actions
       console.log(`[SessionIntelligence] Processing agentic actions for ${request.persona}`);
@@ -88,6 +117,21 @@ export class SessionIntelligenceService {
         request.sessionId,
         this.loopExecutor
       );
+
+      // Track agentic actions triggered (for funnel tracking)
+      if (request.eventBus && actionResults.length > 0) {
+        request.eventBus.publish({
+          eventType: 'agentic_action_triggered' as any,
+          userId: request.userId,
+          timestamp: new Date().toISOString(),
+          metadata: {
+            sessionId: request.sessionId,
+            persona: request.persona,
+            actionCount: actionResults.length,
+            source: 'agentic_action',
+          },
+        });
+      }
 
       const successfulActions = actionResults.filter((r) => r.success);
       const loopsTriggered = successfulActions.filter(

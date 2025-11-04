@@ -46,7 +46,9 @@ function App() {
       // Resolve smart link via API
       apiClient.resolveSmartLink(shortCode, ref || undefined)
         .then((linkData) => {
-          console.log('Smart link resolved:', linkData);
+          if (import.meta.env.DEV) {
+            console.log('Smart link resolved:', linkData);
+          }
           
           // Track link open event (already tracked in backend, but log for frontend)
           if (linkData.success) {
@@ -116,60 +118,62 @@ function App() {
 
   return (
     <>
-      {/* Simple Navigation - In production, this would be handled by React Router */}
-      {currentPage !== 'landing' && (
-        <nav className="bg-white border-b border-gray-200">
+      {/* Navigation Bar */}
+      {currentPage !== 'landing' && currentPage !== 'login' && user && (
+        <nav className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
-              <div className="flex items-center gap-8">
-                <h1 className="text-xl font-bold text-gray-900">
+            <div className="flex items-center justify-between h-14 sm:h-16">
+              <div className="flex items-center gap-6">
+                <h1 className="text-lg sm:text-xl font-bold text-gray-900">
                   Varsity Tutors
-                  {user && (
-                    <span className="ml-3 text-sm font-normal text-gray-500">
-                      ({user.persona})
-                    </span>
-                  )}
                 </h1>
-                <div className="flex gap-4">
+                {user && (
+                  <span className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded">
+                    {user.persona}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1 sm:gap-2">
+                <button
+                  onClick={() => setCurrentPage('dashboard')}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                    currentPage === 'dashboard'
+                      ? 'bg-primary-600 text-white shadow-sm'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  Dashboard
+                </button>
+                {user?.persona === 'student' && (
                   <button
-                    onClick={() => setCurrentPage('dashboard')}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                      currentPage === 'dashboard'
-                        ? 'bg-primary-600 text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
+                    onClick={() => setCurrentPage('results')}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                      currentPage === 'results'
+                        ? 'bg-primary-600 text-white shadow-sm'
+                        : 'text-gray-700 hover:bg-gray-50'
                     }`}
                   >
-                    Dashboard
+                    Test Results
                   </button>
-                  {user?.persona === 'student' && (
-                    <button
-                      onClick={() => setCurrentPage('results')}
-                      className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                        currentPage === 'results'
-                          ? 'bg-primary-600 text-white'
-                          : 'text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
-                      Test Results
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setCurrentPage('analytics')}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                      currentPage === 'analytics'
-                        ? 'bg-primary-600 text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    Analytics
-                  </button>
+                )}
+                <button
+                  onClick={() => setCurrentPage('analytics')}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                    currentPage === 'analytics'
+                      ? 'bg-primary-600 text-white shadow-sm'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  Analytics
+                </button>
+                <div className="ml-4 pl-4 border-l border-gray-200">
                   <button
                     onClick={() => {
                       apiClient.logout();
                       setCurrentPage('login');
                       setUser(null);
                     }}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
                   >
                     Logout
                   </button>
@@ -184,7 +188,7 @@ function App() {
       {currentPage === 'login' && <LoginPage />}
       {currentPage === 'landing' && <LandingPage />}
       {currentPage === 'dashboard' && user && renderDashboard()}
-      {currentPage === 'results' && user && user.persona === 'student' && <TestResults user={user} />}
+      {currentPage === 'results' && user && user.persona === 'student' && <TestResults user={user} onNavigate={setCurrentPage} />}
       {currentPage === 'analytics' && <AnalyticsPage />}
     </>
   );

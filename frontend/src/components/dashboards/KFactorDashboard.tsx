@@ -38,10 +38,18 @@ export const KFactorDashboard: React.FC<KFactorDashboardProps> = ({
           className={`h-12 w-12 rounded-full flex items-center justify-center ${
             metrics.targetMet
               ? 'bg-green-100 text-green-600'
-              : 'bg-orange-100 text-orange-600'
+              : 'bg-red-100 text-red-600'
           }`}
         >
           <Target className="h-6 w-6" />
+        </div>
+        {/* Pass/Fail Indicator */}
+        <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+          metrics.targetMet
+            ? 'bg-green-100 text-green-700'
+            : 'bg-red-100 text-red-700'
+        }`}>
+          {metrics.targetMet ? 'PASS' : 'FAIL'}
         </div>
       </div>
 
@@ -64,7 +72,9 @@ export const KFactorDashboard: React.FC<KFactorDashboardProps> = ({
           />
         </div>
         <p className="text-xs text-gray-500 mt-1">
-          {metrics.targetMet ? 'Target met' : `${(targetK - metrics.kFactor).toFixed(2)} to go`}
+          {metrics.targetMet 
+            ? `Target met (${metrics.kFactor.toFixed(2)} ≥ ${targetK})` 
+            : `${(targetK - metrics.kFactor).toFixed(2)} below target (${metrics.kFactor.toFixed(2)} < ${targetK})`}
         </p>
       </div>
 

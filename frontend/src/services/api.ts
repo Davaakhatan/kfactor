@@ -48,7 +48,9 @@ class ApiClient {
     }
 
     const url = `${API_BASE_URL}${endpoint}`;
-    console.log(`[API] ${options.method || 'GET'} ${url}`, token ? 'with auth' : 'no auth');
+    if (import.meta.env.DEV) {
+      console.log(`[API] ${options.method || 'GET'} ${url}`, token ? 'with auth' : 'no auth');
+    }
 
     let response: Response;
     try {
@@ -182,9 +184,59 @@ class ApiClient {
     return this.request('/tutor/stats');
   }
 
+  // Student Dashboard
+  async getStudentStats() {
+    return this.request('/student/stats');
+  }
+
+  async getStudentCohorts() {
+    return this.request('/student/cohorts');
+  }
+
+  // Create test result (for demo/testing)
+  async createTestResult(data: {
+    subject: string;
+    test_type: string;
+    score: number;
+    correct: number;
+    total: number;
+  }) {
+    return this.request('/test-results', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Create practice session (for demo/testing)
+  async createSession(data: {
+    subject?: string;
+    score?: number;
+    duration?: number;
+  }) {
+    return this.request('/sessions', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   // Analytics
   async getCohortAnalysis(cohort = '2025-01', days = 30) {
     return this.request(`/analytics/cohorts?cohort=${cohort}&days=${days}`);
+  }
+
+  // Results Page Funnel
+  async getResultsFunnel(days: number = 14) {
+    return this.request(`/analytics/results-funnel?days=${days}`);
+  }
+
+  // Transcription-Action Funnel
+  async getTranscriptionFunnel(days: number = 14) {
+    return this.request(`/analytics/transcription-funnel?days=${days}`);
+  }
+
+  // LTV Delta
+  async getLTVDelta(cohort?: string, days: number = 30) {
+    return this.request(`/analytics/ltv-delta?days=${days}${cohort ? `&cohort=${cohort}` : ''}`);
   }
 }
 

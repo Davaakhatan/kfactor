@@ -5,7 +5,6 @@
  */
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../services/api';
 
 export const LoginPage: React.FC = () => {
@@ -14,8 +13,6 @@ export const LoginPage: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const navigate = '/dashboard'; // Simple navigation for now
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -23,8 +20,8 @@ export const LoginPage: React.FC = () => {
 
     try {
       await apiClient.login({ email, password });
-      // Navigate to dashboard (in production, use React Router)
-      window.location.href = navigate;
+      // Reload page to trigger App.tsx useEffect to load user and navigate
+      window.location.reload();
     } catch (err: any) {
       setError(err.message || 'Login failed');
     } finally {
@@ -45,10 +42,12 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="max-w-md w-full bg-white rounded-lg border border-gray-200 p-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Sign In</h1>
-        <p className="text-sm text-gray-600 mb-6">Test the XFactor Viral Growth System</p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center px-4">
+      <div className="max-w-md w-full bg-white rounded-xl shadow-lg border border-gray-200 p-8">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Varsity Tutors</h1>
+          <p className="text-sm text-gray-600">Sign in to continue learning</p>
+        </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
@@ -59,7 +58,8 @@ export const LoginPage: React.FC = () => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+              placeholder="you@example.com"
               required
             />
           </div>
@@ -72,7 +72,8 @@ export const LoginPage: React.FC = () => {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+              placeholder="Enter your password"
               required
             />
           </div>
@@ -86,22 +87,23 @@ export const LoginPage: React.FC = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-primary-600 hover:bg-primary-700 text-white font-medium py-2.5 px-4 rounded-lg transition-colors disabled:opacity-50"
+            className="w-full bg-primary-600 hover:bg-primary-700 text-white font-medium py-3 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow"
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
 
-        <div className="mt-6 pt-6 border-t border-gray-200">
-          <p className="text-xs text-gray-500 mb-3">Quick Test Users:</p>
+        <div className="mt-8 pt-6 border-t border-gray-200">
+          <p className="text-xs font-medium text-gray-700 mb-3 uppercase tracking-wide">Quick Test Users</p>
           <div className="space-y-2">
             {testUsers.map((user) => (
               <button
                 key={user.email}
                 onClick={() => fillTestUser(user.email, user.password)}
-                className="w-full text-left px-3 py-2 text-sm bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+                className="w-full text-left px-4 py-2.5 text-sm bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 hover:border-gray-300"
               >
-                {user.label} ({user.email})
+                <span className="font-medium text-gray-900">{user.label}</span>
+                <span className="text-gray-500 ml-2">({user.email})</span>
               </button>
             ))}
           </div>

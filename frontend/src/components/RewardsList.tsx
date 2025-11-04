@@ -28,6 +28,7 @@ export const RewardsList: React.FC<RewardsListProps> = ({ autoRefresh = false, r
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [claimError, setClaimError] = useState<string | null>(null);
 
   useEffect(() => {
     loadRewards();
@@ -58,13 +59,15 @@ export const RewardsList: React.FC<RewardsListProps> = ({ autoRefresh = false, r
   };
 
   const handleClaimReward = async (rewardId: string) => {
+    setClaimError(null);
     try {
       await apiClient.claimReward(rewardId);
       // Reload rewards to show updated status
       await loadRewards();
     } catch (err: any) {
       console.error('Error claiming reward:', err);
-      alert(err.message || 'Failed to claim reward');
+      setClaimError(err.message || 'Failed to claim reward');
+      setTimeout(() => setClaimError(null), 5000);
     }
   };
 
@@ -97,17 +100,24 @@ export const RewardsList: React.FC<RewardsListProps> = ({ autoRefresh = false, r
   const redeemedRewards = rewards.filter(r => r.status === 'redeemed');
 
   return (
-    <div className="bg-white rounded-lg shadow">
-      <div className="p-6 border-b border-gray-200">
-        <div className="flex items-center gap-3">
-          <Gift className="h-6 w-6 text-primary-600" />
-          <h2 className="text-xl font-semibold text-gray-900">Your Rewards</h2>
+    <div className="card">
+      <div className="p-6 border-b border-gray-100">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="p-2 bg-primary-50 rounded-lg">
+            <Gift className="h-5 w-5 text-primary-600" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900">Your Rewards</h2>
         </div>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-gray-500 ml-12">
           {rewards.length} total reward{rewards.length !== 1 ? 's' : ''}
         </p>
       </div>
 
+      {claimError && (
+        <div className="mx-6 mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+          {claimError}
+        </div>
+      )}
       <div className="p-6 space-y-6">
         {/* Pending Rewards */}
         {pendingRewards.length > 0 && (
@@ -139,7 +149,7 @@ export const RewardsList: React.FC<RewardsListProps> = ({ autoRefresh = false, r
                     </div>
                     <button
                       onClick={() => handleClaimReward(reward.id)}
-                      className="ml-4 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
+                      className="ml-4 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all shadow-sm hover:shadow text-sm font-medium"
                     >
                       Claim
                     </button>
@@ -228,11 +238,13 @@ export const RewardsList: React.FC<RewardsListProps> = ({ autoRefresh = false, r
 
         {/* Empty State */}
         {rewards.length === 0 && (
-          <div className="text-center py-12">
-            <Gift className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 font-medium">No rewards yet</p>
-            <p className="text-sm text-gray-400 mt-1">
-              Complete challenges and invite friends to earn rewards!
+          <div className="empty-state">
+            <div className="w-20 h-20 bg-gradient-to-br from-primary-50 to-primary-100 rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+              <Gift className="h-10 w-10 text-primary-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No rewards yet</h3>
+            <p className="text-sm text-gray-500 max-w-sm">
+              Complete challenges and invite friends to earn exciting rewards!
             </p>
           </div>
         )}
