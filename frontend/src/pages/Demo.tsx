@@ -72,13 +72,21 @@ export const DemoPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            XFactor Viral Growth
-          </h1>
-          <p className="text-sm text-gray-600">
-            Demo prototype showcasing viral loops and social features
-          </p>
+        <div className="mb-8 border-b border-gray-200 pb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                XFactor Viral Growth - Component Demo
+              </h1>
+              <p className="text-sm text-gray-600">
+                This is a demonstration page showing all viral growth components.
+                All data shown is mock data for illustration purposes.
+              </p>
+            </div>
+            <div className="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
+              DEMO MODE
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

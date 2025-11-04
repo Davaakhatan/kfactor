@@ -9,7 +9,7 @@ import { TranscriptionService, SessionTranscription } from './transcription/tran
 import { SummaryService, SessionSummary } from './summary/summary-service.js';
 import { ActionOrchestrator } from '../core/agentic-actions/action-orchestrator.js';
 import { LoopExecutor } from '../core/loops/loop-executor.js';
-import { Persona } from '../types/index.js';
+import { Persona } from '../core/types/index.js';
 
 export interface ProcessSessionRequest {
   sessionId: string;

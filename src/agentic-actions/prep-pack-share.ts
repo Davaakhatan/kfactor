@@ -8,7 +8,7 @@
 
 import { BaseAgenticAction, AgenticActionContext, AgenticActionResult } from '../core/agentic-actions/action-base.js';
 import { LoopExecutor } from '../core/loops/loop-executor.js';
-import { Persona, ViralLoop } from '../types/index.js';
+import { Persona, ViralLoop } from '../core/types/index.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface PrepPack {

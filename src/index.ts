@@ -34,6 +34,7 @@ import { IncentivesAgent } from './agents/incentives/incentives-agent.js';
 import { TutorAdvocacyAgent } from './agents/tutor-advocacy/tutor-advocacy-agent.js';
 import { TrustSafetyAgent } from './agents/trust-safety/trust-safety-agent.js';
 import { AnalyticsService } from './analytics/analytics-service.js';
+import { EventBus } from './core/events/event-bus.js';
 
 /**
  * System initialization result
@@ -59,6 +60,7 @@ export interface SystemComponents {
   tutorAdvocacyAgent: TutorAdvocacyAgent;
   trustSafetyAgent: TrustSafetyAgent;
   analyticsService: AnalyticsService;
+  eventBus: EventBus;
 }
 
 /**
@@ -174,6 +176,7 @@ export function initializeSystem(): SystemComponents {
     tutorAdvocacyAgent,
     trustSafetyAgent,
     analyticsService,
+    eventBus,
   };
 }
 
@@ -264,6 +267,7 @@ export async function processUserTrigger(
 
   // Step 2: Execute each selected loop
   for (const loopId of validLoops) {
+    // Create loop context with all fields from context (including custom fields like practiceScore)
     const loopContext: LoopContext = {
       userId,
       persona,
@@ -271,6 +275,8 @@ export async function processUserTrigger(
       age: context.age,
       grade: context.grade,
       metadata: context.metadata,
+      // Spread all other context fields for loop-specific contexts (BuddyChallengeContext, etc.)
+      ...(context as any),
     };
 
     const result = await loopExecutor.execute({
