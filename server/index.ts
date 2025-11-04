@@ -649,6 +649,7 @@ app.post('/api/session-intelligence/process', authenticateToken, async (req, res
 // ==================== SMART LINK RESOLUTION ====================
 
 // Resolve smart link (short code to full URL with tracking)
+// Supports both /api/smart-links/:shortCode and /share/:shortCode routes
 app.get('/api/smart-links/:shortCode', async (req, res) => {
   const { shortCode } = req.params;
   const { ref, utm_source, utm_medium, utm_campaign } = req.query;
@@ -671,13 +672,13 @@ app.get('/api/smart-links/:shortCode', async (req, res) => {
     }
 
     // Track link click
-    if (link.userId) {
+    if (link.metadata?.userId) {
       db.prepare(`
         INSERT INTO events (id, event_type, user_id, timestamp, metadata)
         VALUES (?, 'invite_opened', ?, datetime('now'), ?)
       `).run(
         uuidv4(),
-        link.userId,
+        link.metadata.userId,
         JSON.stringify({
           shortCode,
           loopId: link.metadata?.loopId,
@@ -689,16 +690,85 @@ app.get('/api/smart-links/:shortCode', async (req, res) => {
       );
     }
 
-    // Redirect to full URL (or return for frontend to handle)
+    // Return link data for frontend to handle routing
     res.json({
       success: true,
-      url: link.url,
+      url: link.deepLink, // Return deep link for frontend routing
+      fullUrl: link.fullUrl,
+      shortCode: link.shortCode,
       loopId: link.metadata?.loopId,
       fvmType: link.metadata?.fvmType,
-      context: link.metadata?.context,
+      persona: link.metadata?.persona,
+      context: {
+        subject: link.metadata?.fvmType === 'challenge' ? 'challenge' : undefined,
+      },
     });
   } catch (error: any) {
     console.error('Error resolving smart link:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to resolve link',
+    });
+  }
+});
+
+// Public share route: /share/:shortCode (matches varsitytutors.com/share/...)
+app.get('/share/:shortCode', async (req, res) => {
+  const { shortCode } = req.params;
+  const { ref, utm_source, utm_medium, utm_campaign } = req.query;
+
+  if (!system || !system.smartLinkService) {
+    return res.status(503).json({
+      success: false,
+      error: 'Smart link service not initialized',
+    });
+  }
+
+  try {
+    const link = system.smartLinkService.resolveLink(shortCode);
+    
+    if (!link) {
+      return res.status(404).json({
+        success: false,
+        error: 'Link not found or expired',
+      });
+    }
+
+    // Track link click
+    if (link.metadata?.userId) {
+      db.prepare(`
+        INSERT INTO events (id, event_type, user_id, referrer_id, timestamp, metadata)
+        VALUES (?, 'invite_opened', ?, ?, datetime('now'), ?)
+      `).run(
+        uuidv4(),
+        link.metadata.userId,
+        ref || null,
+        JSON.stringify({
+          shortCode,
+          loopId: link.metadata?.loopId,
+          ref,
+          utm_source,
+          utm_medium,
+          utm_campaign,
+        })
+      );
+    }
+
+    // Return link data (frontend will handle routing)
+    res.json({
+      success: true,
+      url: link.deepLink,
+      fullUrl: link.fullUrl,
+      shortCode: link.shortCode,
+      loopId: link.metadata?.loopId,
+      fvmType: link.metadata?.fvmType,
+      persona: link.metadata?.persona,
+      context: {
+        subject: link.metadata?.fvmType === 'challenge' ? 'challenge' : undefined,
+      },
+    });
+  } catch (error: any) {
+    console.error('Error resolving share link:', error);
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to resolve link',

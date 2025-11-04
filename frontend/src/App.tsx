@@ -33,32 +33,47 @@ function App() {
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    // Check for smart link in URL (e.g., /challenge/45C8E83A or /link/45C8E83A)
+    // Check for smart link in URL (e.g., /share/45C8E83A, /challenge/45C8E83A, /link/45C8E83A, /invite/45C8E83A)
+    // Supports Varsity Tutors format: varsitytutors.com/share/[shortCode]
     const path = window.location.pathname;
-    const smartLinkMatch = path.match(/\/(challenge|link|invite)\/([A-Z0-9]+)/);
+    const smartLinkMatch = path.match(/\/(share|challenge|link|invite)\/([A-Z0-9]+)/);
     
     if (smartLinkMatch) {
       const shortCode = smartLinkMatch[2];
       const ref = new URLSearchParams(window.location.search).get('ref');
+      const utmSource = new URLSearchParams(window.location.search).get('utm_source');
       
-      // Resolve smart link
+      // Resolve smart link via API
       apiClient.resolveSmartLink(shortCode, ref || undefined)
         .then((linkData) => {
           console.log('Smart link resolved:', linkData);
           
-          // Handle different FVM types
-          if (linkData.fvmType === 'challenge') {
-            // Redirect to challenge page
-            setCurrentPage('results');
-            // Could set challenge context here
-          } else if (linkData.loopId) {
-            // Handle loop-specific routing
-            // For now, just log and redirect to dashboard
-            console.log('Loop ID:', linkData.loopId);
-            setCurrentPage('dashboard');
+          // Track link open event (already tracked in backend, but log for frontend)
+          if (linkData.success) {
+            // Handle different FVM types
+            if (linkData.fvmType === 'challenge') {
+              // Redirect to challenge/test results page
+              setCurrentPage('results');
+              // Could set challenge context here
+            } else if (linkData.fvmType === 'practice') {
+              // Redirect to practice page
+              setCurrentPage('dashboard');
+              // In production, would navigate to practice interface
+            } else if (linkData.fvmType === 'session') {
+              // Redirect to session booking
+              setCurrentPage('dashboard');
+              // In production, would navigate to session booking
+            } else if (linkData.loopId) {
+              // Handle loop-specific routing
+              console.log('Loop ID:', linkData.loopId);
+              setCurrentPage('dashboard');
+            } else {
+              // Default: redirect to dashboard
+              setCurrentPage('dashboard');
+            }
           } else {
-            // Default: redirect to dashboard
-            setCurrentPage('dashboard');
+            console.error('Failed to resolve link:', linkData.error);
+            setCurrentPage('login');
           }
         })
         .catch((error) => {

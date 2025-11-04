@@ -168,7 +168,8 @@ class ApiClient {
   async resolveSmartLink(shortCode: string, ref?: string) {
     const params = new URLSearchParams();
     if (ref) params.append('ref', ref);
-    return this.request(`/smart-links/${shortCode}${params.toString() ? '?' + params.toString() : ''}`);
+    // Use /share/:shortCode endpoint (matches varsitytutors.com/share/... format)
+    return this.request(`/share/${shortCode}${params.toString() ? '?' + params.toString() : ''}`);
   }
 
   // Parent Dashboard

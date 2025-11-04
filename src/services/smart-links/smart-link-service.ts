@@ -54,17 +54,18 @@ export class SmartLinkService {
 
   /**
    * Generate a smart link with attribution
+   * Returns URL in format: varsitytutors.com/share/[shortCode]
    */
   generateLink(config: SmartLinkConfig): SmartLink {
     const linkId = uuidv4();
     const shortCode = this.generateShortCode(linkId);
     const signature = this.signLink(linkId, config.userId, config.loopId);
 
-    // Build deep link URL
+    // Build deep link URL (internal routing)
     const deepLink = this.buildDeepLink(config, linkId, signature);
 
-    // Build full URL with UTM parameters
-    const fullUrl = this.buildFullUrl(config, deepLink);
+    // Build public share URL: varsitytutors.com/share/[shortCode]
+    const fullUrl = this.buildFullUrl(config, deepLink, shortCode);
 
     const link: SmartLink = {
       shortCode,
@@ -198,25 +199,27 @@ export class SmartLinkService {
 
   /**
    * Build full URL with UTM parameters
+   * Uses Varsity Tutors share URL format: varsitytutors.com/share/[shortCode]
    */
-  private buildFullUrl(config: SmartLinkConfig, deepLink: string): string {
-    const url = new URL(deepLink);
+  private buildFullUrl(config: SmartLinkConfig, deepLink: string, shortCode: string): string {
+    // Build share URL in Varsity Tutors format: varsitytutors.com/share/[shortCode]
+    const shareUrl = new URL(`${config.baseUrl}/share/${shortCode}`);
     const utm = config.utmParams ?? {};
 
     // Add UTM parameters
-    if (utm.source) url.searchParams.set('utm_source', utm.source);
-    if (utm.medium) url.searchParams.set('utm_medium', utm.medium || 'referral');
-    if (utm.campaign) url.searchParams.set('utm_campaign', utm.campaign || config.loopId);
-    if (utm.term) url.searchParams.set('utm_term', utm.term);
-    if (utm.content) url.searchParams.set('utm_content', utm.content);
+    if (utm.source) shareUrl.searchParams.set('utm_source', utm.source);
+    if (utm.medium) shareUrl.searchParams.set('utm_medium', utm.medium || 'referral');
+    if (utm.campaign) shareUrl.searchParams.set('utm_campaign', utm.campaign || config.loopId);
+    if (utm.term) shareUrl.searchParams.set('utm_term', utm.term);
+    if (utm.content) shareUrl.searchParams.set('utm_content', utm.content);
 
     // Add attribution parameters
-    url.searchParams.set('ref', config.userId);
+    shareUrl.searchParams.set('ref', config.userId);
     if (config.referrerId) {
-      url.searchParams.set('referrer', config.referrerId);
+      shareUrl.searchParams.set('referrer', config.referrerId);
     }
 
-    return url.toString();
+    return shareUrl.toString();
   }
 
   /**
