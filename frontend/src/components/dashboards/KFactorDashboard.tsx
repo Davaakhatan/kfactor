@@ -64,7 +64,7 @@ export const KFactorDashboard: React.FC<KFactorDashboardProps> = ({
           />
         </div>
         <p className="text-xs text-gray-500 mt-1">
-          {metrics.targetMet ? '✅ Target met!' : `${(targetK - metrics.kFactor).toFixed(2)} to go`}
+          {metrics.targetMet ? 'Target met' : `${(targetK - metrics.kFactor).toFixed(2)} to go`}
         </p>
       </div>
 
