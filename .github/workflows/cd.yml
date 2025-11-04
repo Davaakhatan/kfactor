@@ -1,0 +1,63 @@
+name: CD Pipeline
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*'
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build
+        run: npm run build
+      
+      - name: Run tests
+        run: npm test
+      
+      - name: Deploy to staging
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "Deploying to staging..."
+          # Add deployment commands here
+      
+      - name: Deploy to production
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          echo "Deploying to production..."
+          # Add deployment commands here
+      
+      - name: Create release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: |
+            Automated release from CI/CD pipeline
+            
+            ## Changes
+            - See commit history
+            
+            ## Testing
+            - All tests passed
+            - Build successful
+          draft: false
+          prerelease: false
+

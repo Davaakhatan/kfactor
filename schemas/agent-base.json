@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Agent Base Request",
+  "description": "Base schema for all agent requests",
+  "type": "object",
+  "required": ["agentId", "requestId", "timestamp", "userId"],
+  "properties": {
+    "agentId": {
+      "type": "string",
+      "description": "Identifier of the requesting agent"
+    },
+    "requestId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique request identifier"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Request timestamp in ISO 8601 format"
+    },
+    "userId": {
+      "type": "string",
+      "description": "User identifier"
+    },
+    "context": {
+      "type": "object",
+      "description": "Additional context for the request"
+    }
+  }
+}
+

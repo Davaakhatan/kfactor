@@ -1,0 +1,52 @@
+# Development Rules
+
+Description: Development standards and best practices for the project
+Globs: **/*
+
+## Code Organization
+
+- Agents in `agents/` directory
+- Services in `services/` directory
+- Frontend in `frontend/` directory
+- Analytics in `analytics/` directory
+- Tests in `tests/` directory
+
+## Agent Development
+
+- Each agent must be independently testable
+- Agents must log all decisions with rationale
+- Error handling must include fallbacks
+- Unit tests required for all agents
+- Integration tests for agent interactions
+
+## Testing Requirements
+
+- Unit tests for all agents
+- Integration tests for viral loops
+- E2E tests for complete user journeys
+- Load testing for concurrency requirements
+- Compliance testing for privacy/COPPA/FERPA
+
+## Documentation
+
+- Agent contracts must be documented in JSON Schema
+- API documentation required for all services
+- Event schema must be versioned
+- Architecture diagrams for complex flows
+- Decision rationale must be human-readable
+
+## Error Handling
+
+- Graceful degradation if agents fail
+- Retry logic for transient failures
+- Circuit breakers for agent timeouts
+- User-facing: "Try again" or "Skip for now"
+- All errors must be logged with context
+
+## Security
+
+- Encryption at rest and in transit
+- Access controls for agents
+- Audit logging for all decisions
+- PII minimization throughout
+- Fraud detection and prevention

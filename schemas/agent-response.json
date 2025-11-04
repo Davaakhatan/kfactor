@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Agent Base Response",
+  "description": "Base schema for all agent responses",
+  "type": "object",
+  "required": ["requestId", "timestamp", "success", "rationale"],
+  "properties": {
+    "requestId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Request identifier matching the request"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Response timestamp in ISO 8601 format"
+    },
+    "success": {
+      "type": "boolean",
+      "description": "Whether the agent request was successful"
+    },
+    "rationale": {
+      "type": "string",
+      "description": "Human-readable explanation of the decision or result",
+      "minLength": 10
+    },
+    "featuresUsed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of features/data points used in making the decision"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Confidence score of the decision (0-1)"
+    },
+    "latencyMs": {
+      "type": "number",
+      "description": "Processing latency in milliseconds"
+    },
+    "error": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+

@@ -1,0 +1,45 @@
+# Architecture Rules
+
+Description: Core architectural patterns and conventions for the 10x K Factor viral growth system
+Globs: **/*
+
+## Agent Communication
+
+- All agents communicate via Model Context Protocol (MCP)
+- Agent interfaces must be defined in JSON Schema
+- Every agent decision must include a rationale for auditability
+- Decision SLA: <150ms for in-app triggers
+- Agents must support graceful degradation (fallback to defaults if unavailable)
+
+## Required Agents
+
+1. **Loop Orchestrator**: Chooses which viral loop to trigger
+2. **Personalization**: Tailors messaging and rewards by persona
+3. **Experimentation**: Handles A/B testing and metrics
+4. **Incentives & Economy**: Manages rewards and prevents abuse
+5. **Social Presence**: Creates "alive" feeling
+6. **Tutor Advocacy**: Enables tutor referrals
+7. **Trust & Safety**: Fraud detection and compliance
+
+## Data Flow
+
+- Events flow: User Action → Event Bus → Loop Orchestrator → Agents → Action
+- All events must be logged for analytics
+- PII minimization: Only essential data in event stream
+- Child data must be segregated (separate storage/compute)
+
+## Privacy & Compliance
+
+- COPPA/FERPA safe defaults
+- Clear consent flows for minors
+- Parental gating required where applicable
+- Privacy-safe sharing by default
+- All sharing must include opt-out mechanisms
+
+## Performance
+
+- Support 5k concurrent learners
+- Handle peak 50 events/sec orchestration
+- Horizontal scaling for agents
+- Async processing for non-critical paths
+- Caching for frequently accessed data
