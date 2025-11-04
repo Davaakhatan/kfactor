@@ -94,6 +94,7 @@ export abstract class BaseAgent {
       confidence: options.confidence,
       latencyMs,
       error: options.error,
+      data: options.data,
     };
   }
 
