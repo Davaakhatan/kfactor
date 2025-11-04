@@ -234,7 +234,7 @@ export class OrchestratorAgent extends BaseAgent {
       [UserTrigger.SESSION_COMPLETE]: {
         [Persona.STUDENT]: [ViralLoop.BUDDY_CHALLENGE],
         [Persona.PARENT]: [ViralLoop.PROUD_PARENT],
-        [Persona.TUTOR]: [], // No tutor loop implemented yet
+        [Persona.TUTOR]: [], // Tutor Spotlight triggered by rating, not session complete
       },
       [UserTrigger.RESULTS_PAGE_VIEW]: {
         [Persona.STUDENT]: [ViralLoop.BUDDY_CHALLENGE, ViralLoop.RESULTS_RALLY],
@@ -270,6 +270,11 @@ export class OrchestratorAgent extends BaseAgent {
         [Persona.STUDENT]: [ViralLoop.BUDDY_CHALLENGE],
         [Persona.PARENT]: [ViralLoop.PROUD_PARENT],
         [Persona.TUTOR]: [],
+      },
+      [UserTrigger.SESSION_RATED]: {
+        [Persona.STUDENT]: [],
+        [Persona.PARENT]: [],
+        [Persona.TUTOR]: [ViralLoop.TUTOR_SPOTLIGHT], // Tutor Spotlight triggered by 5★ rating
       },
     };
 

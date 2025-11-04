@@ -50,16 +50,20 @@ export const TutorDashboard: React.FC<TutorDashboardProps> = ({ user }) => {
   }, []);
 
   const handleTutorSpotlight = async () => {
-    // Trigger Tutor Spotlight loop
+    // Trigger Tutor Spotlight loop (requires 5★ rating)
     try {
       await apiClient.triggerViralLoop('session_rated', {
-        loopId: 'tutor_spotlight',
         persona: 'tutor',
-        rating: 5,
+        sessionRating: 5, // Must be 5★ to trigger
+        sessionId: recentSessionId || 'demo-session',
+        subject: tutorData?.subjectPreference || 'Math',
+        tutorName: user?.name || 'Expert Tutor',
+        tutorRating: tutorData?.averageRating || 5,
       });
-      alert('Tutor card generated! Share with families to get referral credits.');
+      alert('Tutor Spotlight card generated! Share with families to get referral credits.');
     } catch (error) {
       console.error('Error generating tutor spotlight:', error);
+      alert('Error: ' + (error as any).message || 'Failed to generate tutor spotlight');
     }
   };
 

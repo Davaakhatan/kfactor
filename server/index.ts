@@ -487,6 +487,7 @@ app.post('/api/viral-loops/trigger', authenticateToken, async (req, res) => {
     // Map trigger string to UserTrigger enum
     const triggerMap: Record<string, UserTrigger> = {
       'session_complete': UserTrigger.SESSION_COMPLETE,
+      'session_rated': UserTrigger.SESSION_RATED, // Tutor Spotlight trigger
       'results_page_view': UserTrigger.RESULTS_PAGE_VIEW,
       'badge_earned': UserTrigger.BADGE_EARNED,
       'streak_preserved': UserTrigger.STREAK_PRESERVED,

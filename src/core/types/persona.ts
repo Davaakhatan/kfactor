@@ -10,6 +10,7 @@ export enum Persona {
 
 export enum UserTrigger {
   SESSION_COMPLETE = 'session_complete',
+  SESSION_RATED = 'session_rated', // Trigger for Tutor Spotlight (5★ rating)
   BADGE_EARNED = 'badge_earned',
   STREAK_PRESERVED = 'streak_preserved',
   RESULTS_PAGE_VIEW = 'results_page_view',

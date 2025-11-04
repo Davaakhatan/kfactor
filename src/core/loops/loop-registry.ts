@@ -11,6 +11,7 @@ import { BuddyChallengeLoop } from '../../loops/buddy-challenge-loop.js';
 import { ResultsRallyLoop } from '../../loops/results-rally-loop.js';
 import { ProudParentLoop } from '../../loops/proud-parent-loop.js';
 import { StreakRescueLoop } from '../../loops/streak-rescue-loop.js';
+import { TutorSpotlightLoop } from '../../loops/tutor-spotlight-loop.js';
 
 export class LoopRegistry {
   private loops: Map<ViralLoop, BaseLoop> = new Map();
@@ -67,6 +68,7 @@ export class LoopRegistry {
     this.register(new ResultsRallyLoop(this.smartLinkService));
     this.register(new ProudParentLoop(this.smartLinkService));
     this.register(new StreakRescueLoop(this.smartLinkService));
+    this.register(new TutorSpotlightLoop(this.smartLinkService));
   }
 
   /**
