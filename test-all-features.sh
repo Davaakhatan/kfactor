@@ -175,7 +175,7 @@ echo ""
 # Test 6: Session Intelligence
 echo "🧠 Test 6: Session Intelligence"
 echo "-------------------------------"
-SESSION_RESULT=$(curl -s -X POST "$API_URL/session-intelligence/process" \
+SESSION_RESPONSE=$(curl -s -X POST "$API_URL/session-intelligence/process" \
     -H "Authorization: Bearer $TUTOR_TOKEN" \
     -H "Content-Type: application/json" \
     -d '{
@@ -185,12 +185,22 @@ SESSION_RESULT=$(curl -s -X POST "$API_URL/session-intelligence/process" \
             "topic": "Quadratic Equations",
             "sessionType": "scheduled"
         }
-    }' | jq -r '.success // false')
+    }')
 
-if [ "$SESSION_RESULT" = "true" ]; then
-    echo -e "${GREEN}✅ Session intelligence processing successful${NC}"
+# Check if response is valid JSON
+if echo "$SESSION_RESPONSE" | jq -e '.' > /dev/null 2>&1; then
+    SESSION_SUCCESS=$(echo "$SESSION_RESPONSE" | jq -r '.success // false')
+    if [ "$SESSION_SUCCESS" = "true" ]; then
+        ACTIONS=$(echo "$SESSION_RESPONSE" | jq -r '.agenticActionsTriggered // 0')
+        LOOPS=$(echo "$SESSION_RESPONSE" | jq -r '.viralLoopsTriggered // 0')
+        echo -e "${GREEN}✅ Session intelligence processing successful (Actions: $ACTIONS, Loops: $LOOPS)${NC}"
+    else
+        ERROR_MSG=$(echo "$SESSION_RESPONSE" | jq -r '.error // "Unknown error"')
+        echo -e "${YELLOW}⚠️ Session intelligence returned false: $ERROR_MSG${NC}"
+    fi
 else
-    echo -e "${YELLOW}⚠️ Session intelligence returned false (may need system initialization)${NC}"
+    echo -e "${YELLOW}⚠️ Session intelligence response not valid JSON: ${SESSION_RESPONSE:0:100}${NC}"
+    echo -e "${YELLOW}   (This may indicate the system needs initialization or transcription service is unavailable)${NC}"
 fi
 echo ""
 
